@@ -5,4 +5,3 @@ This project represents the school system with multiple classes (topics) and stu
 ## Authors
 
 - [@Oleksandr Chornous](https://www.github.com/swefd)
-
