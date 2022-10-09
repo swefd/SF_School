@@ -2,8 +2,6 @@
  * Created by oleksandrchornous on 06/10/22.
  */
 
-import {LightningElement} from 'lwc';
+import { LightningElement } from "lwc";
 
-export default class GitTask extends LightningElement {
-
-}
+export default class GitTask extends LightningElement {}
