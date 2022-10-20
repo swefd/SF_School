@@ -10,40 +10,37 @@ public with sharing class SchoolDAOTest {
 
   @IsTest
   static void getStudentPerformanceTest() {
-    Set<Id> allStudents = (new Map<Id, Student__c>(
-        [SELECT Id FROM Student__c LIMIT 100]
-      ))
-      .keySet();
+    Map<Id, Student__c> testStudentsMap = new Map<Id, Student__c>([
+            SELECT Average_Grade__c
+            FROM Student__c
+            LIMIT 10
+    ]);
 
-    Student__c studentWithMaxGrade = [
-        SELECT Average_Grade__c
-        FROM Student__c
-        WHERE Name = 'Student0'
-      ]
-      .get(0);
-
-    Map<Id, Decimal> gradeByIds = SchoolDAO.getStudentPerformance(allStudents);
 
     Test.startTest();
+    Map<Id, Decimal> gradeByIds = SchoolDAO.getStudentPerformance(testStudentsMap.keySet());
+    Test.stopTest();
+
     System.assert(
-      gradeByIds.keySet().containsAll(allStudents),
-      'Method should return map with the same students ids as keys'
+            gradeByIds.keySet().containsAll(testStudentsMap.keySet()),
+            'Method should return map with the same students ids as keys'
     );
 
+    Student__c student = testStudentsMap.values().get(0);
+
     System.assertEquals(
-      gradeByIds.get(studentWithMaxGrade.Id),
-      studentWithMaxGrade.Average_Grade__c,
-      'Average grade for student with name "Student0" should be 100'
+            student.Average_Grade__c,
+            gradeByIds.get(student.Id),
+            'Average grade for student should be as expected'
     );
-    Test.stopTest();
   }
 
   @IsTest
   static void getClassAttendanceTest() {
     Class__c class_c = [
-      SELECT Id, Number_of_Students__c
-      FROM Class__c
-      WHERE Year__c = '2020'
+            SELECT Id, Number_of_Students__c
+            FROM Class__c
+            LIMIT 1
     ];
     Integer number_of_students = (Integer) class_c.Number_of_Students__c;
 
@@ -52,51 +49,115 @@ public with sharing class SchoolDAOTest {
     Test.stopTest();
 
     System.assertEquals(
-      number_of_students,
-      classAttendance.get(class_c.Id),
-      'should return the same Amount of related student as auto calculated field Number_of_Students__c'
+            number_of_students,
+            classAttendance.get(class_c.Id),
+            'Should return the same Amount of related student as auto calculated field Number_of_Students__c'
     );
   }
 
   @IsTest
   static void getTopStudentsTest() {
-    Id classId = [SELECT Id FROM Class__c WHERE Year__c = '2020'].Id;
 
-    Class_Enrollment__c topEnrollment = [
-      SELECT Student__c, Grade__c
-      FROM Class_Enrollment__c
-      WHERE Class__c = :classId
-      ORDER BY Grade__c DESC
-      LIMIT 1
-    ];
+    Class__c class_c = TestDataFactory.createClass(2020, '1');
+    insert class_c;
+
+    List<Student__c> students = TestDataFactory.createStudents(15, 1, Scholarship.UNASSIGNED);
+    insert students;
+
+    List<Class_Enrollment__c> enrollments = TestDataFactory.assignStudentsToClass(class_c, students);
+    insert enrollments;
+
+    Integer totalEnrollmentsAmount = (Integer) [
+            SELECT COUNT(Id) amount
+            FROM Class_Enrollment__c
+            WHERE Class__c = :class_c.Id
+    ].get(0).get('amount');
+
+    System.assertEquals(
+            enrollments.size(),
+            totalEnrollmentsAmount,
+            'Total enrollments amount should be same'
+    );
+
 
     Test.startTest();
-    List<Class_Enrollment__c> classEnrollments = SchoolDAO.getTopStudents(
-      classId
+    List<Class_Enrollment__c> resultTopEnrollments = SchoolDAO.getTopStudents(
+            class_c.Id
     );
     Test.stopTest();
 
-    System.assertEquals(10, classEnrollments.size());
-    System.assertEquals(
-      topEnrollment.Grade__c,
-      classEnrollments.get(0).Grade__c
+
+    System.assertNotEquals(null, resultTopEnrollments, 'The result list should not be null');
+
+    List<Class_Enrollment__c> expectedTopEnrollments = [
+            SELECT Student__c, Grade__c
+            FROM Class_Enrollment__c
+            WHERE Class__c = :class_c.Id
+            ORDER BY Grade__c DESC
+            LIMIT 10
+    ];
+
+    Set<Id> expectedTopEnrollmentsIds = new Set<Id>(
+            new Map<Id, Class_Enrollment__c>(expectedTopEnrollments).keySet()
     );
+    Set<Id> resultTopEnrollmentsIds = new Set<Id>(
+            new Map<Id, Class_Enrollment__c>(resultTopEnrollments).keySet()
+    );
+
+    System.assertEquals(
+            10,
+            resultTopEnrollments.size(),
+            'The size of the result list should be 10');
+    System.assert(
+            resultTopEnrollmentsIds.containsAll(expectedTopEnrollmentsIds),
+            'The result list should contain all expected Ids'
+    );
+    System.assertEquals(
+            expectedTopEnrollments.get(0).Grade__c,
+            resultTopEnrollments.get(0).Grade__c,
+            'The result list should have top-rated enrollment, as expected');
   }
 
   @IsTest
   static void getStudentsWithScholarshipTest() {
-    Class__c class_c = [SELECT Id FROM Class__c WHERE Year__c = '2020'];
+//    TestBundleOptions bundleOptions = new TestBundleOptions();
+//    bundleOptions.students
+//            .setAmount(5)
+//            .setYearOfStudy(3)
+//            .setScholarshipType(Scholarship.REGULAR);
+//    bundleOptions.classes
+//            .setAmount(1)
+//            .setYearOfStudy('3')
+//            .setYear(2020);
+//    bundleOptions.classEnrollment.setGrade((Integer) Scholarship.REGULAR_MIN_GRADE);
+
+//    TestBundle bundle = new TestBundle(bundleOptions);
+    Class__c class_c = TestDataFactory.createClass(2020, '3');
+    insert class_c;
+
+    List<Student__c> testStudents = new List<Student__c>();
+
+    for (String scholarship : Scholarship.typesList) {
+      testStudents.addAll(TestDataFactory.createStudents(3, 3, scholarship));
+    }
+
+    insert testStudents;
+    insert TestDataFactory.assignStudentsToClass(class_c, testStudents);
+
+    for (Student__c student : testStudents) {
+      System.debug(student);
+    }
 
     Test.startTest();
     List<Student__c> students = SchoolDAO.getStudentsWithScholarship(
-      class_c.Id
+            class_c.Id
     );
     Test.stopTest();
 
     System.assertEquals(
-      15,
-      students.size(),
-      '3/4 from 20 students have assigned scholarship__c'
+            9,
+            students.size(),
+            'Method should return list with 9 student with scholarship'
     );
   }
 }
