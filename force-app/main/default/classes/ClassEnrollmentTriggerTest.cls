@@ -30,8 +30,7 @@ public with sharing class ClassEnrollmentTriggerTest {
     Database.SaveResult[] result = Database.insert(classEnrollments, false);
     Test.stopTest();
 
-    //System.debug('### insert result: ' + result);
-
+    System.assert(result[0].isSuccess());
     System.assert(!result[1].isSuccess());
     System.assert(result[1].getErrors().size() > 0);
     System.assertEquals('Bulk duplicate', result[1].getErrors()[0].getMessage());
