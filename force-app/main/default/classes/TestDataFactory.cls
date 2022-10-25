@@ -3,94 +3,124 @@
  */
 
 public with sharing class TestDataFactory {
-  private static List<Student__c> students;
-  private static List<Class__c> classes;
-  private static List<Class_Enrollment__c> classEnrollments;
-  private static final List<String> scholarship = new List<String>{
-    'Unassigned',
-    'Regular',
-    'Increased',
-    'Academic'
-  };
 
+  /**
+   * Generates a test set of Students, classes, and enrollments.
+   * 1 class for each year of study.
+   * 2 enrollments for each class.
+   */
   public static void setup() {
-    studentsInit();
-    classesInit();
-    classEnrollmentsInit();
-  }
+    List<Class__c> classes = new List<Class__c>();
+    List<Student__c> students = new List<Student__c>();
+    List<Class_Enrollment__c> classEnrollments = new List<Class_Enrollment__c>();
 
-  private static void studentsInit() {
-    students = createStudents(20);
+    Map<Class__c, List<Student__c>> classToStudentMap = new Map<Class__c, List<Student__c>>();
 
-    insert students;
-  }
+    for (Integer i = 1; i < 6; i++) {
+      Class__c class_c = createClass(2020, String.valueOf(i));
+      List<Student__c> studentsForClass = createStudents(2, i, null);
 
-  private static void classesInit() {
-    classes = createClasses(20);
-
-    insert classes;
-  }
-
-  private static void classEnrollmentsInit() {
-    classEnrollments = new List<Class_Enrollment__c>();
-    for (Integer i = 0; i < 20; i++) {
-      Class_Enrollment__c classEnrollment = new Class_Enrollment__c();
-
-      classEnrollment.Name = 'Enrollment' + i;
-      classEnrollment.Class__c = classes.get(0).Id;
-      classEnrollment.Student__c = students.get(i).Id;
-      classEnrollment.Grade__c = 100 - i;
-
-      classEnrollments.add(classEnrollment);
+      classes.add(class_c);
+      students.addAll(studentsForClass);
+      classToStudentMap.put(class_c, studentsForClass);
     }
 
+    insert classes;
+    insert students;
+
+    for (Class__c class_c : classToStudentMap.keySet()) {
+      classEnrollments.addAll(assignStudentsToClass(class_c, classToStudentMap.get(class_c)));
+    }
     insert classEnrollments;
   }
 
-  public static List<Class__c> createClasses(Integer amount) {
-    classes = new List<Class__c>();
-    classes.add(new Class__c(Year__c = '2020', Year_of_Study__c = '1'));
+  public static List<Class_Enrollment__c> assignStudentsToClass(Class__c class_c, List<Student__c> students, Integer grade) {
+    List<Class_Enrollment__c> enrollments = new List<Class_Enrollment__c>();
 
-    for (Integer i = 1; i < amount; i++) {
-      Class__c class_c = new Class__c();
-
-      class_c.Year__c = '2021';
-      class_c.Year_of_Study__c = '1';
-
-      classes.add(class_c);
+    for (Integer i = 0; i < students.size(); i++) {
+      enrollments.add(createClassEnrollment(class_c, students.get(i), grade));
     }
 
-    return classes;
+    return enrollments;
   }
 
-  public static List<Student__c> createStudents(Integer amount) {
-    students = new List<Student__c>();
+  public static List<Class_Enrollment__c> assignStudentsToClass(Class__c class_c, List<Student__c> students) {
+    List<Class_Enrollment__c> enrollments = new List<Class_Enrollment__c>();
+
+    for (Integer i = 0; i < students.size(); i++) {
+      enrollments.add(createClassEnrollment(class_c, students.get(i)));
+    }
+
+    return enrollments;
+  }
+
+
+  public static List<Class_Enrollment__c> assignClassesToStudent(List<Class__c> classes, Student__c student, Integer grade) {
+    List<Class_Enrollment__c> enrollments = new List<Class_Enrollment__c>();
+
+    for (Integer i = 0; i < classes.size(); i++) {
+      enrollments.add(createClassEnrollment(classes.get(i), student, grade));
+    }
+
+    return enrollments;
+  }
+
+  public static List<Class_Enrollment__c> assignClassesToStudent(List<Class__c> classes, Student__c student) {
+    List<Class_Enrollment__c> enrollments = new List<Class_Enrollment__c>();
+
+    for (Integer i = 0; i < classes.size(); i++) {
+      enrollments.add(createClassEnrollment(classes.get(i), student));
+    }
+
+    return enrollments;
+  }
+
+  public static Class_Enrollment__c createClassEnrollment(Class__c class_c, Student__c student, Integer grade) {
+    Class_Enrollment__c enrollment = createClassEnrollment(class_c, student);
+    enrollment.Grade__c = grade;
+    return enrollment;
+  }
+
+  public static Class_Enrollment__c createClassEnrollment(Class__c class_c, Student__c student) {
+    return new Class_Enrollment__c(
+            Class__c = class_c.Id,
+            Student__c = student.Id
+    );
+  }
+
+  public static List<Student__c> createStudents(Integer amount, Integer YearOfStudy, String scholarshipType) {
+    List<Student__c> students = new List<Student__c>();
+
     for (Integer i = 0; i < amount; i++) {
       Student__c student = new Student__c();
-      student.Name = 'Student' + i;
-      student.Email__c = 'student' + i + '@mail.com';
-      student.Scholarship__c = scholarship.get(Math.mod(i, scholarship.size()));
-      student.Year_of_Study__c = String.valueOf(Math.mod(i, 5) + 1);
-
+      student.Name = 'Student_' + YearOfStudy + '_' + i;
+      student.Email__c = 'student-' + YearOfStudy + '-' + i + '@mail.com';
+      student.Scholarship__c =
+              scholarshipType != null ?
+                      scholarshipType :
+                      Scholarship.typesList.get(Math.mod(i, Scholarship.typesList.size()));
+      student.Year_of_Study__c = String.valueOf(YearOfStudy);
       students.add(student);
     }
 
     return students;
   }
 
-  //  public static List<Class_Enrollment__c> createClassEnrollments(Integer amount){
-  //    classEnrollments = new List<Class_Enrollment__c>();
-  //    for (Integer i = 0; i < amount; i++) {
-  //      Class_Enrollment__c classEnrollment = new Class_Enrollment__c();
-  //
-  //      classEnrollment.Name = 'Enrollment' + i;
-  //      classEnrollment.Class__c = classes.get(0).Id;
-  //      classEnrollment.Student__c = students.get(i).Id;
-  //      classEnrollment.Grade__c = 100 - i;
-  //
-  //      classEnrollments.add(classEnrollment);
-  //    }
-  //
-  //    return classEnrollments;
-  //  }
+  public static List<Class__c> createClasses(Integer amount, Integer year, String yearOfStudy) {
+    List<Class__c> classes = new List<Class__c>();
+
+    for (Integer i = 0; i < amount; i++) {
+      classes.add(createClass(year, yearOfStudy));
+    }
+
+    return classes;
+  }
+
+  public static Class__c createClass(Integer year, String yearOfStudy) {
+    Class__c class_c = new Class__c();
+    class_c.Year__c = String.valueOf(year);
+    class_c.Year_of_Study__c = String.valueOf(yearOfStudy);
+
+    return class_c;
+  }
 }
