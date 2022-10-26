@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>55.0</apiVersion>
+    <description>should hold a table of related Classes within the current year (Year__c = this year) for the current
+        Student record.
+    </description>
+    <isExposed>true</isExposed>
+    <masterLabel>Related Classes</masterLabel>
+    <targets>
+        <target>lightning__RecordPage</target>
+    </targets>
+</LightningComponentBundle>

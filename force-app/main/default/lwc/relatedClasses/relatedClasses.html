@@ -1,0 +1,22 @@
+<!--
+ - Created by oleksandrchornous on 25/10/22.
+ -->
+
+<!-- Related Classes -->
+<template>
+  <lightning-card  variant="Narrow"  title="Related Classes" icon-name="standard:education">
+    <lightning-button-icon  icon-name="utility:down" variant="border-filled" alternative-text="Show More" slot="actions"></lightning-button-icon>
+
+    <lightning-combobox class=slds-m-around_medium
+      name="year"
+      label="Year"
+      value={value}
+      placeholder="Select Year"
+      options={options}
+      onchange={handleChangeYear} >
+    </lightning-combobox>
+
+    <c-related-classes-data-table classes-list={selectedClasses} ondataloaded={generatePicklistOptions}></c-related-classes-data-table>
+
+  </lightning-card>
+</template>
