@@ -10,6 +10,13 @@ public with sharing class Scholarship {
           'Academic'
   };
 
+  public static final Map<String, Integer> Rate = new Map<String, Integer>{
+          'Unassigned' => 0,
+          'Regular' => 100,
+          'Increased' => 125,
+          'Academic' => 150
+  };
+
   public final static String UNASSIGNED = 'Unassigned';
   public final static String REGULAR = 'Regular';
   public final static String INCREASED = 'Increased';
